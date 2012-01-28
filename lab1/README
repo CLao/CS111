@@ -1,0 +1,9 @@
+Limitations:
+
+The algorithm is highly inefficient.
+
+Much allocated memory is leaked.
+
+Only minimal testing has been done.
+
+Passes all tests on Ubuntu 11.10, not so on SEAS linux server
