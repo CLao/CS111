@@ -38,7 +38,8 @@ int execute_command_r (command_t c, int time_travel)
 		int andStatus;
 		char** argv;
 		int seq;
-		int fdirect;
+		int fidirect;
+		int fodirect;
 		int errorC;
 		errorC = 0;
 		int fd[2];
@@ -69,17 +70,15 @@ int execute_command_r (command_t c, int time_travel)
 					argv = c->u.word;
 					if (c->input!=NULL)
 					{		
-					fdirect = open(c->input, O_RDONLY|O_CREAT|O_TRUNC);						
-						pipe(fd);
-						dup2(fd[0], fdirect);
-						dup2(fd[1], 1);
+					fidirect = open(c->input, O_RDONLY|O_CREAT|O_TRUNC);						
+						dup2(fidirect, 0);
+						close(fidirect);
 					}
 					if (c->output!=NULL)
 					{		
-					fdirect = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);						
-						pipe(fd);
-						dup2(fd[0], 0);
-						dup2(fd[1], fdirect);
+					fodirect = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);						
+						dup2(fodirect, 1);
+						close(fodirect);
 					}
 					errorStatus = execvp(c->u.word[0], argv);
 					break;
@@ -128,14 +127,20 @@ int execute_command_r (command_t c, int time_travel)
 								error(childstatus, 0, "Child Process Failedsadsadsa");
 							}
 							waitpid(child2, &childstatus, WNOHANG);
-							//error(1, 0, "I don't even");
+
 							exit(0);
 						}
 						if(child2 == 0) //This child writes
 						{
-							//error(1,0,"FAT ALBERT");
+
 							close(fd[0]);
-							dup2(fd[1], 1);
+							
+							if (c->u.command[0]->input!=NULL)
+							{		
+								fidirect = open(c->u.command[0]->input, O_WRONLY|O_CREAT|O_TRUNC);						
+								dup2(fidirect, 1);
+							}else
+								dup2(fd[1], 1);
 							argv = c->u.command[0]->u.word;
 							childError = execvp(argv[0], argv);
 							//if (errorStatus) { return errorStatus; } else return 0;
@@ -145,7 +150,12 @@ int execute_command_r (command_t c, int time_travel)
 					{
 						//error(1, 0, "HEY HEY HEY");
 						close(fd[1]);
-						dup2(fd[0], 0);
+						if (c->u.command[0]->output!=NULL)
+							{		
+								fodirect = open(c->u.command[0]->output, O_WRONLY|O_CREAT|O_TRUNC);						
+								dup2(fodirect, 0);
+							}else
+								dup2(fd[0], 0);
 						argv = c->u.command[1]->u.word;
 						childError = execvp(argv[0], argv);
 						//if (errorStatus) { return errorStatus; }else return 0;
