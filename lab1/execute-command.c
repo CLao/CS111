@@ -70,7 +70,7 @@ int execute_command_r (command_t c, int time_travel)
 					argv = c->u.word;
 					if (c->input!=NULL)
 					{		
-						fidirect = open(c->input, O_RDONLY | O_CREAT | O_TRUNC);						
+						fidirect = open(c->input, O_RDONLY | O_CREAT);						
 						dup2(fidirect, 0);
 						close(fidirect);
 					}

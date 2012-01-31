@@ -680,7 +680,7 @@ void parseIO (command_stream_t s, command_t c, unsigned sInit, unsigned sLimit, 
 			else
 			{
 				c->input = strdup(s->tokens[pos + 1]);
-				if (strcmp (s->tokens[pos + 2], ">") == 0)
+				if ((pos+3)<=sLimit && strcmp (s->tokens[pos + 2], ">") == 0)
 				{
 					if (specialToken (s->tokens[pos + 3]))
 					{
