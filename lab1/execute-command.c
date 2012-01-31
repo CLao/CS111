@@ -26,6 +26,7 @@ int execute_command_r (command_t c, int time_travel)
 	if(!time_travel)
 	{
 		int errorStatus;
+		int childError;
 		pid_t pid;
 		pid_t andPid;
 		int status;
@@ -35,6 +36,7 @@ int execute_command_r (command_t c, int time_travel)
 		int andStatus;
 		char** argv;
 		int seq;
+		int fdirect;
 		int errorC;
 		errorC = 0;
 		int fd[2];
@@ -99,7 +101,7 @@ int execute_command_r (command_t c, int time_travel)
 						{
 							close(fd[0]);
 							close(fd[1]);
-							if (waitpid(-1, &childstatus, 0)){
+							if (waitpid(child1, &childstatus, 0)<0){
 								return childstatus;
 								error(childstatus, 0, "Child Process sdFailed");
 							}
@@ -109,7 +111,9 @@ int execute_command_r (command_t c, int time_travel)
 								return childstatus;
 								error(childstatus, 0, "Child Process Failedsadsadsa");
 							}
-							return 0;
+							waitpid(child2, &childstatus, WNOHANG);
+							//error(1, 0, "I don't even");
+							exit(0);
 						}
 						if(child2 == 0) //This child writes
 						{
@@ -117,7 +121,7 @@ int execute_command_r (command_t c, int time_travel)
 							close(fd[0]);
 							dup2(fd[1], 1);
 							argv = c->u.command[0]->u.word;
-							errorStatus = execvp(argv[0], argv);
+							childError = execvp(argv[0], argv);
 							//if (errorStatus) { return errorStatus; } else return 0;
 						}
 					}
@@ -127,7 +131,7 @@ int execute_command_r (command_t c, int time_travel)
 						close(fd[1]);
 						dup2(fd[0], 0);
 						argv = c->u.command[1]->u.word;
-						errorStatus = execvp(argv[0], argv);
+						childError = execvp(argv[0], argv);
 						//if (errorStatus) { return errorStatus; }else return 0;
 					}				
 					break;
@@ -153,6 +157,6 @@ execute_command (command_t c, int time_travel)
 {
 	int status;
 	status = execute_command_r (c, time_travel);
-	
-	if (!status) { error(status, 0, "Child Process Failed"); }
+	//printf("%d", status);
+	if (status!= 0) { error(status, 0, "Child Process Failed"); }
 }
