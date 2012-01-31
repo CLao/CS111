@@ -7,8 +7,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 int
 command_status (command_t c)
@@ -65,6 +67,20 @@ int execute_command_r (command_t c, int time_travel)
 			switch(c->type){
 				case SIMPLE_COMMAND: 
 					argv = c->u.word;
+					if (c->input!=NULL)
+					{		
+					fdirect = open(c->input, O_RDONLY|O_CREAT|O_TRUNC);						
+						pipe(fd);
+						dup2(fd[0], fdirect);
+						dup2(fd[1], 1);
+					}
+					if (c->output!=NULL)
+					{		
+					fdirect = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);						
+						pipe(fd);
+						dup2(fd[0], 0);
+						dup2(fd[1], fdirect);
+					}
 					errorStatus = execvp(c->u.word[0], argv);
 					break;
 				case SEQUENCE_COMMAND:
