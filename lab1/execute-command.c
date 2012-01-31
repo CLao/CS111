@@ -70,13 +70,13 @@ int execute_command_r (command_t c, int time_travel)
 					argv = c->u.word;
 					if (c->input!=NULL)
 					{		
-					fidirect = open(c->input, O_RDONLY|O_CREAT|O_TRUNC);						
+						fidirect = open(c->input, O_RDONLY | O_CREAT | O_TRUNC);						
 						dup2(fidirect, 0);
 						close(fidirect);
 					}
 					if (c->output!=NULL)
 					{		
-					fodirect = open(c->output, O_WRONLY|O_CREAT|O_TRUNC);						
+						fodirect = open(c->output, O_WRONLY |  O_TRUNC| O_CREAT);						
 						dup2(fodirect, 1);
 						close(fodirect);
 					}
@@ -134,13 +134,13 @@ int execute_command_r (command_t c, int time_travel)
 						{
 
 							close(fd[0]);
-							
+							dup2(fd[1], 1);
 							if (c->u.command[0]->input!=NULL)
 							{		
 								fidirect = open(c->u.command[0]->input, O_WRONLY|O_CREAT|O_TRUNC);						
-								dup2(fidirect, 1);
-							}else
-								dup2(fd[1], 1);
+								dup2(fidirect, 0);
+								close(fidirect);
+							}
 							argv = c->u.command[0]->u.word;
 							childError = execvp(argv[0], argv);
 							//if (errorStatus) { return errorStatus; } else return 0;
@@ -150,12 +150,14 @@ int execute_command_r (command_t c, int time_travel)
 					{
 						//error(1, 0, "HEY HEY HEY");
 						close(fd[1]);
-						if (c->u.command[0]->output!=NULL)
+						dup2(fd[0], 0);
+						if (c->u.command[1]->output!=NULL)
 							{		
-								fodirect = open(c->u.command[0]->output, O_WRONLY|O_CREAT|O_TRUNC);						
-								dup2(fodirect, 0);
-							}else
-								dup2(fd[0], 0);
+								fodirect = open(c->u.command[1]->output, O_WRONLY|O_CREAT|O_TRUNC);						
+								
+								dup2(fodirect, 1);
+								close(fodirect);
+							}
 						argv = c->u.command[1]->u.word;
 						childError = execvp(argv[0], argv);
 						//if (errorStatus) { return errorStatus; }else return 0;
