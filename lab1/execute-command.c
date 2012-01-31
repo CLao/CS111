@@ -29,12 +29,15 @@ int execute_command_r (command_t c, int time_travel)
 		pid_t pid;
 		pid_t andPid;
 		int status;
+		int child1;
+		int child2;
+		int childstatus;
 		int andStatus;
 		char** argv;
 		int seq;
 		int errorC;
 		errorC = 0;
-		int fd[2] = {0, 1};
+		int fd[2];
 		pid = fork();
 		if(pid < 0)
 		{
@@ -86,6 +89,48 @@ int execute_command_r (command_t c, int time_travel)
 				case PIPE_COMMAND:
 					//NOT CORRECT IMPLEMENTATION					
 					pipe(fd);
+					
+					
+					child1 = fork();
+					if ( child1 > 0)
+					{
+						child2 = fork();
+						if (child2 > 0)
+						{
+							close(fd[0]);
+							close(fd[1]);
+							if (waitpid(-1, &childstatus, 0)){
+								return childstatus;
+								error(childstatus, 0, "Child Process sdFailed");
+							}
+							if (!WIFEXITED(childstatus) || WEXITSTATUS(childstatus) != 0)
+
+							{
+								return childstatus;
+								error(childstatus, 0, "Child Process Failedsadsadsa");
+							}
+							return 0;
+						}
+						if(child2 == 0) //This child writes
+						{
+							//error(1,0,"FAT ALBERT");
+							close(fd[0]);
+							dup2(fd[1], 1);
+							argv = c->u.command[0]->u.word;
+							errorStatus = execvp(argv[0], argv);
+							//if (errorStatus) { return errorStatus; } else return 0;
+						}
+					}
+					if (child1==0) //This child reads
+					{
+						//error(1, 0, "HEY HEY HEY");
+						close(fd[1]);
+						dup2(fd[0], 0);
+						argv = c->u.command[1]->u.word;
+						errorStatus = execvp(argv[0], argv);
+						//if (errorStatus) { return errorStatus; }else return 0;
+					}				
+					break;
 					
 					
 			case SUBSHELL_COMMAND:
