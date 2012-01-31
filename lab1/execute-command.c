@@ -71,26 +71,7 @@ int execute_command_r (command_t c, int time_travel)
 					errorC = execute_command_r(c->u.command[0], 0);
 					if (errorC) { return errorC; }
 					errorC = execute_command_r(c->u.command[1], 0);
-					if (errorC) { return errorC; }
-					//if(c->u.command[1]!=NULL)
-					//	execute_command(c->u.command[1], 0);
-						
-					/*andPid = fork();
-					if(andPid>0){
-						if(waitpid(andPid, &andStatus, 0) < 0)
-							error(1,0,"a&&b: a failedssss");
-						else if (WEXITSTATUS(andStatus) != 0)
-							error(1,0, "a&&b: a failed");
-						else
-						{
-							printf("whrtetgd");
-							execute_command(c->u.command[1],0);
-						}
-					}
-					else if(andPid == 0)
-						execute_command(c->u.command[0],0);
-					else if(andPid <0)
-						error(1, 0, "AND failed to fork");*/				
+					if (errorC) { return errorC; }				
 					break;
 				case OR_COMMAND:				
 					errorC = execute_command_r(c->u.command[0], 0);
@@ -100,25 +81,7 @@ int execute_command_r (command_t c, int time_travel)
 						if (errorC) { return errorC; }
 						else return 0;
 					}
-					return 0;
-					/*andPid = fork();
-					if(andPid>0){
-						if(waitpid(andPid, &andStatus, 0) < 0)
-							error(1,0,"a||b: a failedssss");
-						else if (WEXITSTATUS(andStatus) != 0){
-							error(1,0, "a||b: a failed");
-							execute_command(c->u.command[1],0);
-						}
-						else
-						{
-							printf("whrtetgd");
-							execute_command(c->u.command[1],0);
-						}
-					}
-					else if(andPid == 0)
-						execute_command(c->u.command[0],0);
-					else if(andPid <0)
-						error(1, 0, "AND failed to fork");*/				
+					return 0;				
 					break;
 				case PIPE_COMMAND:
 					//NOT CORRECT IMPLEMENTATION					
