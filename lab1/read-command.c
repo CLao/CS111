@@ -488,13 +488,13 @@ unsigned findLastSeq (command_stream_t s, unsigned sInit, unsigned sLimit, int *
 		}
 		if (strcmp (token, "(") == 0)
 		{
-			*errorC = 4;
+			*errorC = -1;
 			return index;
 		}
 		
 		if (strcmp (token, "\n") == 0)
 		{
-			if (index != 0)
+			if (index != sInit)
 			{
 				token = s->tokens[index - 1];
 				if ((strcmp (token, "<") == 0) || (strcmp (token, ">") == 0))
@@ -505,7 +505,7 @@ unsigned findLastSeq (command_stream_t s, unsigned sInit, unsigned sLimit, int *
 				
 				else if (specialToken (token))
 				{
-					index = findLastSeq (s, sInit, sLimit - 1, errorC);
+					index = findLastSeq (s, sInit, index - 1, errorC);
 					return index;
 				}
 			}
@@ -572,7 +572,7 @@ unsigned findLastAndOr (command_stream_t s, unsigned sInit, unsigned sLimit, int
 		}
 		if (strcmp (token, "(") == 0)
 		{
-			*errorC = 4;
+			*errorC = -1;
 			return index;
 		}
 		
@@ -644,7 +644,7 @@ unsigned findLastPipe (command_stream_t s, unsigned sInit, unsigned sLimit, int 
 		}
 		if (strcmp (token, "(") == 0)
 		{
-			*errorC = 4;
+			*errorC = -1;
 			return index;
 		}
 		

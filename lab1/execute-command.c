@@ -70,13 +70,13 @@ int execute_command_r (command_t c, int time_travel)
 					argv = c->u.word;
 					if (c->input!=NULL)
 					{		
-						fidirect = open(c->input, O_RDONLY | O_CREAT);						
+						fidirect = open(c->input, O_RDONLY | O_CREAT, 0666);						
 						dup2(fidirect, 0);
 						close(fidirect);
 					}
 					if (c->output!=NULL)
 					{		
-						fodirect = open(c->output, O_WRONLY |  O_TRUNC| O_CREAT);						
+						fodirect = open(c->output, O_WRONLY |  O_TRUNC| O_CREAT, 0666);						
 						dup2(fodirect, 1);
 						close(fodirect);
 					}
@@ -137,7 +137,7 @@ int execute_command_r (command_t c, int time_travel)
 							dup2(fd[1], 1);
 							if (c->u.command[0]->input!=NULL)
 							{		
-								fidirect = open(c->u.command[0]->input, O_WRONLY|O_CREAT|O_TRUNC);						
+								fidirect = open(c->u.command[0]->input, O_WRONLY|O_CREAT|O_TRUNC, 0666);						
 								dup2(fidirect, 0);
 								close(fidirect);
 							}
@@ -148,12 +148,11 @@ int execute_command_r (command_t c, int time_travel)
 					}
 					if (child1==0) //This child reads
 					{
-						//error(1, 0, "HEY HEY HEY");
 						close(fd[1]);
 						dup2(fd[0], 0);
 						if (c->u.command[1]->output!=NULL)
 							{		
-								fodirect = open(c->u.command[1]->output, O_WRONLY|O_CREAT|O_TRUNC);						
+								fodirect = open(c->u.command[1]->output, O_WRONLY|O_CREAT|O_TRUNC, 0666);						
 								
 								dup2(fodirect, 1);
 								close(fodirect);
@@ -166,11 +165,22 @@ int execute_command_r (command_t c, int time_travel)
 					
 					
 			case SUBSHELL_COMMAND:
+				if (c->input!=NULL)
+				{		
+					fidirect = open(c->input, O_WRONLY|O_CREAT|O_TRUNC, 0666);						
+					dup2(fidirect, 0);
+					close(fidirect);
+				}
+				if (c->output!=NULL)
+				{		
+					fodirect = open(c->output, O_WRONLY|O_CREAT|O_TRUNC, 0666);								
+					dup2(fodirect, 1);
+					close(fodirect);
+				}
 				execute_command(*(c->u.command), time_travel);
 				break;
 			default:
-			//	execute_command(c->u.command[0],time_travel);
-			//	execute_command(c->u.command[1],time_travel);
+				error (3, 0, "No command type!");
 				break;
 			}	
 		}
