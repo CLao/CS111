@@ -8,8 +8,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-
-// Me: Delete these includes when done debugging.
 #include <stdio.h>
 
 enum char_type
@@ -55,6 +53,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	returnStream->script = NULL;
 	returnStream->cLen = 0;
 	returnStream->cSize = sizeof (command_t*);
+	returnStream->cArray = NULL;
 	int currentByte;
 	size_t tokenSize;
 	unsigned lines;
@@ -69,7 +68,8 @@ make_command_stream (int (*get_next_byte) (void *),
 	adjacentOr = 0;
 	int shouldAdd;
 	shouldAdd = 1;
-	int isFreed = 0;
+	int ump;
+	ump = 0;
 	
 	
 	// Read the stream into the token array.
@@ -115,7 +115,10 @@ make_command_stream (int (*get_next_byte) (void *),
 			if (returnType (currentByte) == SPECIAL_TOKEN)
 			{
 				token[0] = currentByte;
-				
+				if (currentByte == '(')
+					ump++;
+				if (currentByte == ')')
+					ump--;
 				if (currentByte == '\n')
 				{
 					adjacentAnd = 0;
@@ -134,7 +137,7 @@ make_command_stream (int (*get_next_byte) (void *),
 				
 				if (currentByte == '<' || currentByte == '>')
 				{
-					if (prevChar == '<' || prevChar == '>')
+					if (prevChar == '<' || prevChar == '>' || prevChar == '\0')
 					{
 						free (token);
 						//isFreed = 1;
@@ -142,12 +145,36 @@ make_command_stream (int (*get_next_byte) (void *),
 						error (1, 0, "%u: Unsupported token \"%c%c\".", lines, prevChar, currentByte);
 					}
 				}
+				
+				if (currentByte == '|')
+				{
+					adjacentAnd = 0;
+					if (prevToken == ';' || prevToken == '\n' || prevToken == '\0')
+					{
+						free (token);
+						//isFreed=1;
+						destroy_command_stream (returnStream);
+						error (1, 0, "%u: Invalid '|' after \'%c\'.", lines, prevChar);
+					}
+				}
+				
+				if (currentByte == '&')
+				{
+					adjacentOr = 0;
+					if (prevToken == ';' || prevToken == '\n' || prevToken == '\0')
+					{
+						free (token);
+						//isFreed=1;
+						destroy_command_stream (returnStream);
+						error (1, 0, "%u: Invalid '&' after \'%c\'.", lines, prevChar);
+					}
+				}
 
 				if (currentByte == ';')
 				{
 					adjacentAnd = 0;
 					adjacentOr = 0;
-					if (prevToken == ';' || prevToken == '\n')
+					if (prevToken == ';' || prevToken == '\n' || prevToken == '\0')
 					{
 						free (token);
 						//isFreed=1;
@@ -155,6 +182,7 @@ make_command_stream (int (*get_next_byte) (void *),
 						error (1, 0, "%u: Invalid ';' after \'%c\'.", lines, prevChar);
 					}
 				}
+				
 				prevChar = currentByte;
 				prevToken = prevChar;
 				currentByte = get_next_byte (get_next_byte_argument);
@@ -170,6 +198,7 @@ make_command_stream (int (*get_next_byte) (void *),
 					}
 					else adjacentAnd++;
 				}
+				
 				if (prevChar == '|')
 				{
 					if (currentByte != '|' && adjacentOr > 1)
@@ -181,7 +210,7 @@ make_command_stream (int (*get_next_byte) (void *),
 					}
 					else adjacentOr++;
 				}
-	
+		
 			}
 			
 			else if (returnType (currentByte) == UNSUPPORTED_TOKEN)
@@ -232,11 +261,12 @@ make_command_stream (int (*get_next_byte) (void *),
 				returnStream->tokens[returnStream->numTokens] = token;
 				returnStream->numTokens++;
 			}
-			//else{free (token);}
+			else if (token != NULL){ free (token); }
 			
 		}
-		//isFreed = 0;
 	}
+	if (ump != 0)
+		{ error (1, 0, "0: Unmatched parentheses!");}
 	returnStream->script = readScript (returnStream);
 	returnStream->cArray = checked_malloc (returnStream->cSize);
 	cDFS (returnStream);
@@ -246,8 +276,11 @@ make_command_stream (int (*get_next_byte) (void *),
 
 void destroy_command_stream (command_stream_t s)
 {
-	return;
-//	printf ("Attempting to destroy stream...");
+	size_t index;
+	index = 0;
+	char* freeToken;
+	freeToken = NULL;
+
 	// NULL check.
 	if (s == NULL)
 	{
@@ -255,26 +288,27 @@ void destroy_command_stream (command_stream_t s)
 	}
 	
 	// Free each individual token in the stream.
-	char* freeToken = s->tokens[0];
 	
-	if (freeToken != NULL)
+	while (index < s->numTokens)
 	{
+		freeToken = s->tokens[index];
 		free (freeToken);
+		index++;
 	}
 	
-	//while (*++freeToken)
-	{
-		free (freeToken);
-	}
-	
-	// Free the array of commands.
+	// Free the array of temp commands.
 	free (s->tokens);
+	
+	// Free the sequence command array.
+	if (s->cArray != NULL)
+		{ free (s->cArray); }
 	
 	// Free the entire stream.
 	free (s);
 	
-//	printf (" Success!\n");
 
+	
+	return;
 }
 
 // Reads the next token of a command stream only if it matches a given token.
@@ -433,7 +467,7 @@ unsigned findLastSeq (command_stream_t s, unsigned sInit, unsigned sLimit, int *
 			curPos = index;
 			unsigned ump;
 			ump = 1;
-			while (index > sInit && ump != 0)
+			while (index >= sInit && ump != 0)
 			{
 				index--;
 				token = s->tokens[index];
@@ -446,7 +480,7 @@ unsigned findLastSeq (command_stream_t s, unsigned sInit, unsigned sLimit, int *
 			{
 				index--;
 			}
-			else
+			if (ump != 0)
 			{
 				*errorC = 4;
 				return curPos;
@@ -517,7 +551,7 @@ unsigned findLastAndOr (command_stream_t s, unsigned sInit, unsigned sLimit, int
 			curPos = index;
 			unsigned ump;
 			ump = 1;
-			while (index > sInit && ump != 0)
+			while (index >= sInit && ump != 0)
 			{
 				index--;
 				token = s->tokens[index];
@@ -530,7 +564,7 @@ unsigned findLastAndOr (command_stream_t s, unsigned sInit, unsigned sLimit, int
 			{
 				index--;
 			}
-			else
+			if (ump != 0)
 			{
 				*errorC = 4;
 				return curPos;
@@ -589,7 +623,7 @@ unsigned findLastPipe (command_stream_t s, unsigned sInit, unsigned sLimit, int 
 			curPos = index;
 			unsigned ump;
 			ump = 1;
-			while (index > sInit && ump != 0)
+			while (index >= sInit && ump != 0)
 			{
 				index--;
 				token = s->tokens[index];
@@ -602,7 +636,7 @@ unsigned findLastPipe (command_stream_t s, unsigned sInit, unsigned sLimit, int 
 			{
 				index--;
 			}
-			else
+			if (ump != 0)
 			{
 				*errorC = 4;
 				return curPos;
@@ -842,16 +876,6 @@ command_t parse (command_stream_t s, unsigned sInit, unsigned sLimit, unsigned *
 
 command_t readScript (command_stream_t s)
 {	
-	/*
-	unsigned index = 0;
-	while (index < s->numTokens)
-	{
-		printf ("Token %u: ", index);
-		printf (s->tokens[index], 's');
-		printf ("\n");
-		index++;
-	}*/
-	
 	// Initialze variables.
 	command_t c;
 	int errorC;
@@ -908,7 +932,6 @@ command_t readScript (command_stream_t s)
 }
 
 // Format the command list into an array by Depth First Search
-
 void cDFSr (command_t c, command_stream_t s)
 {
 	switch (c->type)
