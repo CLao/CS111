@@ -28,6 +28,10 @@ void command_debug (command_t s)
 			}
 			while (*++wrdptr);
 			break;
+			
+		case SUBSHELL_COMMAND:
+			command_debug (s->u.subshell_command);
+			break;
 		default:
 			break;
 	}
@@ -994,7 +998,7 @@ void cDFS (command_stream_t s)
 command_t
 read_command_stream (command_stream_t s)
 {
-	//command_debug (s->cArray[0]);
+	//command_debug (s->cArray[s->position]);
 	//error (9, 0, "Size of command array is %p", s->cArray);
 	if (s->cLen == 0)
 	{ return NULL; }

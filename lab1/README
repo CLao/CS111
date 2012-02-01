@@ -11,6 +11,16 @@ by:
 
 Changelog:
 
+01/31/12 9:00PM
+Bugfixes:
+ Fixed random child process failures
+
+Bugs:
+ - Subshells cannot execute in sequence
+ - Subshells still supress standard output
+ - Test scripts work perfectly using make check, but not when the
+	program is explicitly called.
+
 01/31/12
 Command execution implemented
 Current bugs:

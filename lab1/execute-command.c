@@ -89,19 +89,21 @@ int execute_command_r (command_t c, int time_travel)
 					break;
 				case AND_COMMAND:				
 					errorC = execute_command_r(c->u.command[0], 0);
-					if (errorC) { return errorC; }
+					if (errorC) { exit(errorC); }//return errorC; }
 					errorC = execute_command_r(c->u.command[1], 0);
-					if (errorC) { return errorC; }				
+					if (errorC) { exit(errorC); }//return errorC; }
+					exit(0);				
 					break;
 				case OR_COMMAND:				
 					errorC = execute_command_r(c->u.command[0], 0);
 					if (errorC)
 					{
 						errorC = execute_command_r(c->u.command[1], 0);
-						if (errorC) { return errorC; }
-						else return 0;
+						if (errorC) { exit (errorC); }//return errorC; }
+						else exit(0);//return 0;
 					}
-					return 0;				
+					exit(0);
+					//return 0;				
 					break;
 				case PIPE_COMMAND:				
 					pipe(fd);
@@ -178,7 +180,7 @@ int execute_command_r (command_t c, int time_travel)
 				}
 				errorC = execute_command_r(c->u.subshell_command, time_travel);
 				if (errorC) { return errorC; }
-						else return 0;
+						else exit (0);
 				break;
 			default:
 				error (3, 0, "No command type!");
