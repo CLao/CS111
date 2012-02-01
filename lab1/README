@@ -11,6 +11,11 @@ by:
 
 Changelog:
 
+10/31/12/11:00PM
+Current status:
+ Parser does not parse subshells correctly.
+ Make check now uses timetrash instead of bash
+
 01/31/12 9:00PM
 Bugfixes:
  Fixed random child process failures
