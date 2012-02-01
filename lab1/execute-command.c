@@ -103,8 +103,7 @@ int execute_command_r (command_t c, int time_travel)
 					}
 					return 0;				
 					break;
-				case PIPE_COMMAND:
-					//NOT CORRECT IMPLEMENTATION					
+				case PIPE_COMMAND:				
 					pipe(fd);
 					
 					
@@ -167,17 +166,19 @@ int execute_command_r (command_t c, int time_travel)
 			case SUBSHELL_COMMAND:
 				if (c->input!=NULL)
 				{		
-					fidirect = open(c->input, O_WRONLY|O_CREAT|O_TRUNC, 0666);						
+					fidirect = open(c->input, O_RDONLY | O_CREAT, 0666);						
 					dup2(fidirect, 0);
 					close(fidirect);
 				}
 				if (c->output!=NULL)
 				{		
-					fodirect = open(c->output, O_WRONLY|O_CREAT|O_TRUNC, 0666);								
+					fodirect = open(c->output, O_WRONLY |  O_TRUNC| O_CREAT, 0666);						
 					dup2(fodirect, 1);
 					close(fodirect);
 				}
-				execute_command(*(c->u.command), time_travel);
+				errorC = execute_command_r(*(c->u.command), time_travel);
+				if (errorC) { return errorC; }
+						else return 0;
 				break;
 			default:
 				error (3, 0, "No command type!");
@@ -195,6 +196,6 @@ execute_command (command_t c, int time_travel)
 {
 	int status;
 	status = execute_command_r (c, time_travel);
-	//printf("%d", status);
+	printf("%d", status);
 	if (status!= 0) { error(status, 0, "Child Process Failed"); }
 }
