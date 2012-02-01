@@ -176,7 +176,7 @@ int execute_command_r (command_t c, int time_travel)
 					dup2(fodirect, 1);
 					close(fodirect);
 				}
-				errorC = execute_command_r(*(c->u.command), time_travel);
+				errorC = execute_command_r(c->u.subshell_command, time_travel);
 				if (errorC) { return errorC; }
 						else return 0;
 				break;
