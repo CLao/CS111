@@ -1,3 +1,4 @@
+cat > basic.sh << 'EOF'
 #Test basic commands one-by-one
 
 #Test simple command
@@ -27,3 +28,7 @@ rm bar.txt
 #(cat subshellio.txt)
 #(rm subshellio.txt)
 
+EOF
+
+./timetrash basic.sh
+rm basic.sh

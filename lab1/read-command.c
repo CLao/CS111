@@ -890,14 +890,15 @@ command_t parse (command_stream_t s, unsigned sInit, unsigned sLimit, unsigned *
 			return NULL;
 		}
 	}
-
-	// Resolve simple command
-	c->type = SIMPLE_COMMAND;
-	c->u.word = getCommand (s);
-	if (c->u.word == NULL)
-	{
-		free(c);
-		return NULL;
+	else {
+		// Resolve simple command
+		c->type = SIMPLE_COMMAND;
+		c->u.word = getCommand (s);
+		if (c->u.word == NULL)
+		{
+			free(c);
+			return NULL;
+		}
 	}
 		// I/O redirections
 	parseIO (s, c, sInit, sLimit, lineNum, errorC);
@@ -920,7 +921,15 @@ command_t readScript (command_stream_t s)
 	c = NULL;
 	errorC = 0;
 	lineNum = 1;
-
+	
+	/*unsigned index = 0;
+	while (index < s->numTokens)
+	{
+		printf ("Token %u: ", index);
+		printf (s->tokens[index], 's');
+		printf ("\n");
+		index++;
+	}*/
 	c = parse (s, 0, s->numTokens - 1, &lineNum, &errorC);
 	s->done = 1;
 //	if (c == NULL && errorC == 0)

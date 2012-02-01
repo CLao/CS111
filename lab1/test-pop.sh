@@ -1,7 +1,8 @@
+cat > pop.sh << 'EOF'
 echo pop && echo pop;
 ls | grep f > foo.txt;
 echo yodawg;
-sleep 3 || sleep 10
+sleep 1 || exit
 
 
 cat < foo.txt > bar.txt
@@ -20,4 +21,7 @@ echo fuuuuuuuuuuuuuuun > test.txt && cat< test.txt > test2.txt && rm test.txt &&
 
 cp foo.txt foo2.txt || mkdir failure_dir
 rm foo.txt && rm foo2.txt && rm bar.txt && rm log.txt && rm log2.txt || echo fail
+EOF
 
+./timetrash pop.sh
+rm pop.sh
