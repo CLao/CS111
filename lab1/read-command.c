@@ -514,7 +514,7 @@ unsigned findLastSeq (command_stream_t s, unsigned sInit, unsigned sLimit, int *
 				return curPos;
 			}
 		}
-		if (strcmp (token, "(") == 0)
+		if (strcmp (token, "(") == 0 )//&& sInit == 0)
 		{
 			*errorC = -1;
 			return index;
@@ -873,12 +873,16 @@ command_t parse (command_stream_t s, unsigned sInit, unsigned sLimit, unsigned *
 	
 	*errorC = 0;
 	// Resolve subshell command
+	unsigned endPos;
+	endPos = sLimit;
 	pos = sInit;
 	s->position = sInit;
 	if (accept (s, "("))
 	{
+		while (endPos > sInit && strcmp (s->tokens[endPos], ")") != 0)
+			{ endPos--; }
 		c->type = SUBSHELL_COMMAND;
-		c->u.subshell_command = parse (s, sInit + 1, sLimit - 1, lineNum, errorC);
+		c->u.subshell_command = parse (s, sInit + 1, endPos - 1, lineNum, errorC);
 		return c;
 		if (*errorC != 0)
 		{

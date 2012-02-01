@@ -2,7 +2,7 @@
 
 #Test simple command
 echo Simple commands work.
-
+touch ThisShouldDelete.txt
 #Test AND/OR command
 touch ThisShouldDelete.txt && rm ThisShouldDelete.txt
 echo AND Commands work.
@@ -23,7 +23,7 @@ rm foo.txt
 rm bar.txt
 
 #Test Subshells
-(echo Subshells work > subshellio.txt)
-(cat subshellio.txt)
-(rm subshellio.txt)
+#(echo Subshells work > subshellio.txt)
+#(cat subshellio.txt)
+#(rm subshellio.txt)
 
