@@ -1,5 +1,24 @@
-Limitations:
+CS 111 Project 1
+Time Travel Shell
 
+by:
+	Christian Lao
+	ID: 803777334
+	
+	Trent Bramer
+	ID: 
+	
+
+Changelog:
+
+01/31/12
+Command execution implemented
+Current bugs:
+
+- Subshells supress standard output for some reason
+- I/O redirection is broken
+
+01/18/12
 The algorithm is highly inefficient.
 
 Much allocated memory is leaked.

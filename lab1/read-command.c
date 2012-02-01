@@ -10,6 +10,29 @@
 #include <string.h>
 #include <stdio.h>
 
+void command_debug (command_t s)
+{
+	char **wrdptr;
+	printf ("Type: %i\n",s->type);
+	printf ("Status: %i\n",s->status);
+	printf ("Input: %p\n",s->input);
+	printf ("Output: %p\n",s->output);
+	switch (s->type) {
+		case SIMPLE_COMMAND:
+			wrdptr = s->u.word;
+			if (wrdptr == NULL)
+			{error (15, 0, "LOL");}
+			do
+			{
+				printf (" %s", *wrdptr);
+			}
+			while (*++wrdptr);
+			break;
+		default:
+			break;
+	}
+}
+
 enum char_type
   {
 	WORD_CHAR,			// ASCII letters, digits, or !%+-./:@^_
@@ -130,7 +153,7 @@ make_command_stream (int (*get_next_byte) (void *),
 						destroy_command_stream (returnStream);
 						error (1, 0, "%u: Invalid newline after \'%c\'.", lines, prevChar);
 					}
-					if (returnType (prevChar) == WORD_CHAR || prevChar == ')')
+					if (returnType (prevChar) == WORD_CHAR || prevChar == ')')// || prevToken == '#')
 					{ token[0] = ';'; }
 					else {shouldAdd = 0;}
 				}
@@ -270,6 +293,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	returnStream->script = readScript (returnStream);
 	returnStream->cArray = checked_malloc (returnStream->cSize);
 	cDFS (returnStream);
+	//error (9, 0, "Length of command array = %zu", returnStream->cLen);
 	returnStream->position = 0;
 	return returnStream;
 }
@@ -862,6 +886,11 @@ command_t parse (command_stream_t s, unsigned sInit, unsigned sLimit, unsigned *
 	// Resolve simple command
 	c->type = SIMPLE_COMMAND;
 	c->u.word = getCommand (s);
+	if (c->u.word == NULL)
+	{
+		free(c);
+		return NULL;
+	}
 		// I/O redirections
 	parseIO (s, c, sInit, sLimit, lineNum, errorC);
 	if (*errorC != 0)
@@ -886,12 +915,11 @@ command_t readScript (command_stream_t s)
 
 	c = parse (s, 0, s->numTokens - 1, &lineNum, &errorC);
 	s->done = 1;
-	
-	if (c == NULL && errorC == 0)
-	{
-		destroy_command_stream(s);
-		error (1, 0, "Parse error; returned NULL");
-	}
+//	if (c == NULL && errorC == 0)
+//	{
+//		destroy_command_stream(s);
+//		error (1, 0, "Parse error; returned NULL");
+//	}
 	
 	if (errorC != 0)
 	{
@@ -925,15 +953,13 @@ command_t readScript (command_stream_t s)
 			error (1, 0, "%u: Unkown error", lineNum);
 			break;
 	}
-	
-	//error(1, 0, "sd");
-//	destroy_command_stream(s);
 	return c;
 }
 
 // Format the command list into an array by Depth First Search
 void cDFSr (command_t c, command_stream_t s)
 {
+	if (c == NULL) { return; }
 	switch (c->type)
 	{
 		case AND_COMMAND:
@@ -968,6 +994,11 @@ void cDFS (command_stream_t s)
 command_t
 read_command_stream (command_stream_t s)
 {
+	//command_debug (s->cArray[0]);
+	//error (9, 0, "Size of command array is %p", s->cArray);
+	if (s->cLen == 0)
+	{ return NULL; }
+	
 	if (s->position >= s->cLen)
 	{ return NULL; } 
 	

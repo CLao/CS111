@@ -196,6 +196,6 @@ execute_command (command_t c, int time_travel)
 {
 	int status;
 	status = execute_command_r (c, time_travel);
-	printf("%d", status);
+	//printf("%d", status);
 	if (status!= 0) { error(status, 0, "Child Process Failed"); }
 }
