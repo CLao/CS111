@@ -1017,7 +1017,10 @@ read_command_stream (command_stream_t s)
 	{ return NULL; }
 	
 	if (s->position >= s->cLen)
-	{ return NULL; } 
+	{ 
+		destroy_command_stream (s);
+		return NULL; 
+	} 
 	
 	s->position++;
 	return s->cArray[s->position - 1];
