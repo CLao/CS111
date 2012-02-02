@@ -11,7 +11,11 @@ by:
 
 Changelog:
 
-10/31/12/11:00PM
+02/01/12
+Subshells still bugged
+Added Skeleton code for 1C
+
+01/31/12/11:00PM
 Current status:
  Parser does not parse subshells correctly.
  Make check now uses timetrash instead of bash

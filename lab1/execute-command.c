@@ -22,6 +22,10 @@ command_status (command_t c)
   return c->status;
 }
 
+//NOTE: all dependency graph objects re-use command pointers that
+// already exist and get freed independently of their use in the
+// dependency graph.
+
 /*Dependency graph node
  * Contains a pointer to a command, an array of pointers to
  * dependency nodes which must be executed before the current node's
@@ -38,35 +42,169 @@ struct dep_node
 	size_t aft_size;
 };
 
+// Initialze a node with a command_t
+void init_node (dep_node_t n, command_t c)
+{
+	n = checked_malloc (sizeof (struct dep_node));
+	n->c = c;
+	n->before = checked_malloc (sizeof (dep_node_t));
+	n->bef_size = 0;
+	n->after = checked_malloc (sizeof (dep_node_t));
+	n->aft_size = 0;
+}
+
+void destroy_node (dep_node_t n)
+{
+	// Free all pointers and stuff
+}
+
 /*Dependency graph
- * Contains two arrays of dependency nodes;
+ * Contains two arrays of dependency nodes pointers;
  * one array of nodes which can be executed at any time,
  * and one array of nodes which have unresolved dependencies
  * */
 struct dep_graph 
 {
-	// Array of executable nodes
-	dep_node_t n_exec;
-	size_t n_execSize;
+	// Array of executable nodes pointers
+	dep_node_t* exec;
+	size_t execSize;
+	size_t execMem;
 	
-	// Array of nodes with dependencies
-	dep_node_t n_dep;
-	size_t n_depSize;
+	// Array of node pointers with dependencies
+	dep_node_t* dep;
+	size_t depSize;
+	size_t depMem;
 };
 
+// Adds a dependency node to the graph
+int dep_graph_add (dep_graph_t d, dep_node_t n, int whichArray)
+{
+	switch (whichArray)
+	{
+	case 0: // exec
+		if (d->execMem < (sizeof (dep_node_t) * (d->execSize + 1)))
+			{ d->exec = checked_grow_alloc (d->exec, &(d->execMem)); }
+		d->exec[d->execSize] = n;
+		d->execSize++;
+		break;
+		
+	case 1: // dep
+		if (d->depMem < (sizeof (dep_node_t) * (d->depSize + 1)))
+			{ d->dep = checked_grow_alloc (d->dep, &(d->depMem)); }
+		d->dep[d->depSize] = n;
+		d->depSize++;
+		break;
+	default:
+			return -1;
+	}
+	
+	return 0;
+}
 
+// Deletes AND FREES an executable node from the dependency graph
+int remove_e (dep_graph_t d, size_t epos)
+{
+	if (epos >= d->execSize) { return -1; }
+	free (d->exec[epos]);
+	size_t it;
+	for (it = epos; it < (d->execSize - 1); it++)
+	{
+		d->exec[it] = d->exec[it + 1];
+	}
+	d->execSize--;
+	
+	return 0;
+}
+
+// Moves a node from the array of executable nodes to the array of
+//	nodes with dependencies
+int move_e_to_d (dep_graph_t d, size_t epos)
+{
+	if (epos >= d->execSize) { return -1; }
+	
+	int err = dep_graph_add (d, d->exec[epos], 1);
+	d->depSize++;
+	
+	size_t it;
+	for (it = epos; it < (d->execSize - 1); it++)
+	{
+		d->exec[it] = d->exec[it + 1];
+	}
+	
+	d->depSize--;
+	
+	return 0;
+}
+
+// Moves a node from the array of nodes with dependencies to the array of
+//	independent nodes
+int move_d_to_e (dep_graph_t d, size_t dpos)
+{
+	if (dpos >= d->depSize) { return -1; }
+	
+	int err = dep_graph_add (d, d->dep[dpos], 0);
+	d->execSize++;
+	
+	size_t it;
+	for (it = dpos; it < (d->depSize - 1); it++)
+	{
+		d->dep[it] = d->dep[it + 1];
+	}
+	
+	d->execSize--;
+	
+	return 0;
+}
+
+// Initialze dependency graph
+void init_dep_graph (dep_graph_t d)
+{
+	d = checked_malloc (sizeof (struct dep_graph));
+	d->exec = checked_malloc (sizeof (dep_node_t));
+	d->dep = checked_malloc (sizeof (dep_node_t));
+	d->execSize = 0;
+	d->execMem = sizeof (dep_node_t);
+	d->depSize = 0;
+	d->depMem = sizeof (dep_node_t);;
+}
 
 /*make_dep_graph
  * Creates a dependency graph object from a command stream
  * */
- 
 dep_graph_t make_dep_graph (command_stream_t s)
 {
-	dep_graph_t return_d;
-	return_d = checked_malloc (sizeof (struct dep_graph));
-	return return_d;
+	dep_graph_t ret_d;
+	ret_d = NULL;
+	size_t it;
+	it = 0;
+	command_t comm;
+	
+	init_dep_graph (ret_d);
+	
+	// Iterate through the stream's array of commands
+	for (it = 0; it < s->cLen; it++)
+	{
+		comm = s->cArray[it];
+		
+		//TODO:
+		// Determine which nodes already seen depend on this one.
+		// Look through the independent nodes.
+			// If a match is found, add this node as a dependency
+			// And move it to the node with dependencies list
+		// Look through the nodes with dependencies.
+			// If a match is found, add this node as a dependency
+
+		
+	}
+	
+	return ret_d;
 }
  
+void destroy_dep_graph (dep_graph_t d)
+{
+	//TODO:
+	//Free all pointers and stuff
+}
  
 /*execute_parallel
  * Time travel implementation of execute_command
@@ -78,6 +216,7 @@ void execute_parallel (command_stream_t s);
 
 void execute_dep_graph (dep_graph_t d)
 {	
+	//TODO:
 	// while d has independent nodes
 		// remove a node n from d
 		// Fork
