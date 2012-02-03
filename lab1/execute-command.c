@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include "alloc.h"
+#include "strings.h"
 
 typedef struct dep_node* dep_node_t;
 typedef struct dep_graph *dep_graph_t;
@@ -169,20 +170,80 @@ void init_dep_graph (dep_graph_t d)
 /*make_dep_graph
  * Creates a dependency graph object from a command stream
  * */
-char* find_args(command_t c)
+char** find_args(command_t c)
 {
-	char* args;
+	char** args;
+	char** args2;
+	args = checked_malloc((sizeof(char*))*512);
+	args2 = checked_malloc((sizeof(char*)) * 512);
+	int pos = 0;
+	int innerPos = 1;
 	switch (c->type){
-		case AND_COMMAND:
-			
     		case SEQUENCE_COMMAND:
-    		case OR_COMMAND:          
-		case PIPE_COMMAND:        
-		case SIMPLE_COMMAND:      
+			args = find_args(c->u.command[0]); 
+			break;
+		case SIMPLE_COMMAND:
+			while (c->u.word[innerPos] != NULL)
+			{args[pos] = c->u.word[innerPos]; pos++; innerPos++;}
+			break;
 		case SUBSHELL_COMMAND: break;
+		default: 
+			args = find_args(c->u.command[0]);
+			args2 = find_args(c->u.command[1]);
+			innerPos = 0;
+			while(args[pos]!=NULL)
+			{
+				pos++;
+			}       
+			pos++;
+			while(args2[innerPos]!=NULL)
+			{
+				args[pos] = args2[innerPos];
+				pos++; innerPos++;
+			}
+			break;   
 	}
 	return args;
 }
+
+char** find_IO(command_t c)
+{
+	char** args;
+	char** args2;
+	args = checked_malloc((sizeof(char*))*512);
+	args2 = checked_malloc((sizeof(char*))*512);
+	int pos = 0;
+	int innerPos = 0;
+	switch (c->type){
+    		case SEQUENCE_COMMAND:
+			args = find_args(c->u.command[0]); 
+			break;
+		case SIMPLE_COMMAND:
+			if (c->input != NULL)
+			{args[pos] = c->input;pos++;}
+			if (c->output != NULL)
+			{args[pos] = c->output;pos++;}
+			break;
+		case SUBSHELL_COMMAND: break;
+		default: 
+			args = find_args(c->u.command[0]);
+			args2 = find_args(c->u.command[1]);
+			innerPos = 0;
+			while(args[pos]!=NULL)
+			{
+				pos++;
+			}       
+			pos++;
+			while(args2[innerPos]!=NULL)
+			{
+				args[pos] = args2[innerPos];
+				pos++; innerPos++;
+			}       
+			break;   
+	}
+	return args;
+}
+
 
 dep_graph_t make_dep_graph (command_stream_t s)
 {
@@ -196,6 +257,11 @@ dep_graph_t make_dep_graph (command_stream_t s)
 	ret_d = checked_malloc (sizeof (struct dep_graph));
 	init_dep_graph (ret_d);
 
+	char** args;
+	args = checked_malloc((sizeof(char*))*512);
+	char** IO;
+	IO = checked_malloc((sizeof(char*))*512);
+
 	for (it = 0; it < s->cLen; it++)
 	{			
 		comm = s->cArray[it];
@@ -204,6 +270,8 @@ dep_graph_t make_dep_graph (command_stream_t s)
 		init_node(n, comm);
 		while(iter < ret_d->execSize || iter < ret_d->depSize)
 		{	
+			args = find_args(comm);
+			IO = find_IO(comm);
 			printf("iter: %d\n", iter);
 			//error(1,0,"dick");
 			if(comm->input!= NULL)
