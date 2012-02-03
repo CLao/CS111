@@ -272,7 +272,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 		{	
 			args = find_args(comm);
 			IO = find_IO(comm);
-			printf("iter: %d\n", iter);
+			printf("iter: %zu\n", iter);
 			//error(1,0,"dick");
 			if(comm->input!= NULL)
 				printf("%s\n", comm->input);
