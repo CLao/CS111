@@ -8,7 +8,7 @@ sleep 1 || exit
 cat < foo.txt > bar.txt
 echo thereshouldbenodiff;
 diff foo.txt bar.txt
-sleep 1 && sleep 2
+(echo things) > t1 && (echo work) > t2 && (echo fine) > t3 && cat t1 t2 t3 && rm t1 t2 t3
 
 
 ls -l | find foo.txt > log.txt

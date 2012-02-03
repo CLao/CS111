@@ -11,6 +11,15 @@ by:
 
 Changelog:
 
+02/02-03/12
+KNOWN BUGS:
+ Time travel leaks memory
+ Arrays are not yet dynamic
+ Time travel does not block properly
+
+Implemented time travel
+Fixed parsing (hopefully for good)
+
 02/01/12
 Subshells still bugged
 Added Skeleton code for 1C

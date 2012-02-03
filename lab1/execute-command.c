@@ -17,10 +17,21 @@
 typedef struct dep_node* dep_node_t;
 typedef struct dep_graph *dep_graph_t;
 
+int debugmode = 0;
+
 int
 command_status (command_t c)
 {
   return c->status;
+}
+
+int mem_need_grow (void* ptr, size_t* len, size_t obSize, size_t mem)
+{
+	if (obSize * (*len + 1) > mem)
+	{
+		return 1;
+	}
+	return 0;
 }
 
 //NOTE: all dependency graph objects re-use command pointers that
@@ -178,26 +189,38 @@ void init_dep_graph (dep_graph_t d)
 /*make_dep_graph
  * Creates a dependency graph object from a command stream
  * */
-char** find_args(command_t c)
+char** find_args(command_t c, size_t* aSize)
 {
 	char** args;
 	char** args2;
-	args = checked_malloc((sizeof(char*))*512);
-	args2 = checked_malloc((sizeof(char*)) * 512);
+	size_t a1Mem;
+	a1Mem = (sizeof (char*) * 512);
+	size_t a2Mem;
+	a2Mem = (sizeof (char*));
+	args = checked_malloc(a1Mem);
+	//args2 = checked_malloc(a2Mem);
+	size_t a1Size;
+	a1Size = 0;
+	size_t a2Size;
+	a2Size = 0;
 	int pos = 0;
 	int innerPos = 1;
 	switch (c->type){
     		case SEQUENCE_COMMAND:
-			args = find_args(c->u.command[0]); 
+			args = find_args(c->u.command[0], aSize); 
 			break;
 		case SIMPLE_COMMAND:
 			while (c->u.word[innerPos] != NULL)
-			{args[pos] = c->u.word[innerPos]; pos++; innerPos++;}
+			{
+				if (mem_need_grow (args, &a1Size, sizeof (char*), a1Mem))
+					{ args = checked_grow_alloc (args, &a1Size); }
+				args[pos] = c->u.word[innerPos]; pos++; innerPos++; a1Size++;
+			}
 			break;
 		case SUBSHELL_COMMAND: break;
 		default: 
-			args = find_args(c->u.command[0]);
-			args2 = find_args(c->u.command[1]);
+			args = find_args(c->u.command[0], &a1Size);
+			args2 = find_args(c->u.command[1], &a2Size);
 			innerPos = 0;
 			while(args[pos]!=NULL)
 			{
@@ -211,6 +234,7 @@ char** find_args(command_t c)
 			}
 			break;   
 	}
+	*aSize = a1Size;
 	return args;
 }
 
@@ -220,11 +244,13 @@ char** find_I(command_t c)
 	char** args2;
 	args = checked_malloc((sizeof(char*))*512);
 	args2 = checked_malloc((sizeof(char*))*512);
+	size_t a1Size;
+	size_t a2Size;
 	int pos = 0;
 	int innerPos = 0;
 	switch (c->type){
     		case SEQUENCE_COMMAND:
-			args = find_args(c->u.command[0]); 
+			args = find_args(c->u.command[0], &a1Size); 
 			break;
 		case SIMPLE_COMMAND:
 			if (c->input != NULL)
@@ -234,8 +260,8 @@ char** find_I(command_t c)
 			break;
 		case SUBSHELL_COMMAND: break;
 		default: 
-			args = find_args(c->u.command[0]);
-			args2 = find_args(c->u.command[1]);
+			args = find_args(c->u.command[0], &a1Size);
+			args2 = find_args(c->u.command[1], &a2Size);
 			innerPos = 0;
 			while(args[pos]!=NULL)
 			{
@@ -258,11 +284,13 @@ char** find_O(command_t c)
 	char** args2;
 	args = checked_malloc((sizeof(char*))*512);
 	args2 = checked_malloc((sizeof(char*))*512);
+	size_t a1Size;
+	size_t a2Size;
 	int pos = 0;
 	int innerPos = 0;
 	switch (c->type){
     		case SEQUENCE_COMMAND:
-			args = find_args(c->u.command[0]); 
+			args = find_args(c->u.command[0], &a1Size); 
 			break;
 		case SIMPLE_COMMAND:
 			//if (c->input != NULL)
@@ -272,8 +300,8 @@ char** find_O(command_t c)
 			break;
 		case SUBSHELL_COMMAND: break;
 		default: 
-			args = find_args(c->u.command[0]);
-			args2 = find_args(c->u.command[1]);
+			args = find_args(c->u.command[0], &a1Size);
+			args2 = find_args(c->u.command[1], &a2Size);
 			innerPos = 0;
 			while(args[pos]!=NULL)
 			{
@@ -320,7 +348,8 @@ dep_graph_t make_dep_graph (command_stream_t s)
 		init_node(n, comm);
 		while(iter < ret_d->execSize || iter < ret_d->depSize)
 		{	
-			args = find_args(comm);
+			size_t aSize = 0;
+			args = find_args(comm, &aSize);
 			I = find_I(comm);
 			O = find_O(comm);
 			n->in = I;
@@ -428,9 +457,9 @@ dep_graph_t make_dep_graph (command_stream_t s)
 		iter +=1;
 		}
 
-		if(n->bef_size > 0){printf("befsize = %d\n", n->bef_size);
+		if(n->bef_size > 0){if (debugmode) printf("befsize = %zu\n", n->bef_size);
 			dep_graph_add(ret_d, n, 1);}
-		else{ printf("befsize = %d\n", n->bef_size);
+		else{ if (debugmode) printf("befsize = %zu\n", n->bef_size);
 			dep_graph_add(ret_d, n, 0);}
 		iter = 0;
 		
@@ -481,8 +510,8 @@ void execute_dep_graph (dep_graph_t d)
 		{	
 			while(iter < d->depSize)
 			{
-				printf("hello\n");
-				for(innerIter; innerIter < d->dep[iter]->bef_size; innerIter++)
+				if (debugmode) printf("hello\n");
+				for(/*innerIter*/; innerIter < d->dep[iter]->bef_size; innerIter++)
 				{
 					if(d->dep[iter]->before[innerIter] == d->exec[0])
 					{
@@ -495,9 +524,9 @@ void execute_dep_graph (dep_graph_t d)
 				}
 				if (d->dep[iter]->bef_size == 0)
 				{
-					printf("changing stuffs\n");
+					if (debugmode) printf("changing stuffs\n");
 					addstat = move_d_to_e(d, iter);
-					printf("addstat: %d\n", addstat);
+					if (debugmode) printf("addstat: %d\n", addstat);
 				}
 				iter++;
 			}
