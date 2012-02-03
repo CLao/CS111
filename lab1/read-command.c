@@ -32,6 +32,12 @@ void command_debug (command_t s)
 		case SUBSHELL_COMMAND:
 			command_debug (s->u.subshell_command);
 			break;
+		
+		case SEQUENCE_COMMAND:
+			command_debug (s->u.command[0]);
+			command_debug (s->u.command[1]);
+			break;
+			
 		default:
 			break;
 	}
@@ -495,7 +501,7 @@ unsigned findLastSeq (command_stream_t s, unsigned sInit, unsigned sLimit, int *
 			curPos = index;
 			unsigned ump;
 			ump = 1;
-			while (index >= sInit && ump != 0)
+			while (index > sInit && ump != 0)
 			{
 				index--;
 				token = s->tokens[index];
@@ -513,6 +519,14 @@ unsigned findLastSeq (command_stream_t s, unsigned sInit, unsigned sLimit, int *
 				*errorC = 4;
 				return curPos;
 			}
+			//error (4, 0," %u", index);
+			//		fprintf (stderr, " %u", index);
+			if (index == sInit)
+				{ 
+					*errorC = -1;
+					return index; 
+				}
+			return index;
 		}
 		if (strcmp (token, "(") == 0 )//&& sInit == 0)
 		{
@@ -579,7 +593,7 @@ unsigned findLastAndOr (command_stream_t s, unsigned sInit, unsigned sLimit, int
 			curPos = index;
 			unsigned ump;
 			ump = 1;
-			while (index >= sInit && ump != 0)
+			while (index > sInit && ump != 0)
 			{
 				index--;
 				token = s->tokens[index];
@@ -597,6 +611,12 @@ unsigned findLastAndOr (command_stream_t s, unsigned sInit, unsigned sLimit, int
 				*errorC = 4;
 				return curPos;
 			}
+			if (index == sInit)
+				{ 
+					*errorC = -1;
+					return index; 
+				}
+			return index;
 		}
 		if (strcmp (token, "(") == 0)
 		{
@@ -651,7 +671,7 @@ unsigned findLastPipe (command_stream_t s, unsigned sInit, unsigned sLimit, int 
 			curPos = index;
 			unsigned ump;
 			ump = 1;
-			while (index >= sInit && ump != 0)
+			while (index > sInit && ump != 0)
 			{
 				index--;
 				token = s->tokens[index];
@@ -669,6 +689,12 @@ unsigned findLastPipe (command_stream_t s, unsigned sInit, unsigned sLimit, int 
 				*errorC = 4;
 				return curPos;
 			}
+			if (index == sInit)
+				{ 
+					*errorC = -1;
+					return index; 
+				}
+			return index;
 		}
 		if (strcmp (token, "(") == 0)
 		{
@@ -771,6 +797,7 @@ command_t parse (command_stream_t s, unsigned sInit, unsigned sLimit, unsigned *
 
 	// Eat stream until last sequence command and divide stream at that point.
 	pos = findLastSeq (s, sInit, sLimit, errorC);
+			//printf (" %u", pos);
 	if (*errorC != -1)
 	{
 		c->type = SEQUENCE_COMMAND;
@@ -883,6 +910,13 @@ command_t parse (command_stream_t s, unsigned sInit, unsigned sLimit, unsigned *
 			{ endPos--; }
 		c->type = SUBSHELL_COMMAND;
 		c->u.subshell_command = parse (s, sInit + 1, endPos - 1, lineNum, errorC);
+		parseIO (s, c, sInit, sLimit, lineNum, errorC);
+		if (*errorC != 0)
+		{
+			free (c);
+			*lineNum = findLineNumber (s, pos);
+			return NULL;
+		}
 		return c;
 		if (*errorC != 0)
 		{
@@ -930,6 +964,7 @@ command_t readScript (command_stream_t s)
 		printf ("\n");
 		index++;
 	}*/
+	
 	c = parse (s, 0, s->numTokens - 1, &lineNum, &errorC);
 	s->done = 1;
 //	if (c == NULL && errorC == 0)

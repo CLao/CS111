@@ -24,9 +24,9 @@ rm foo.txt
 rm bar.txt
 
 #Test Subshells
-#(echo Subshells work > subshellio.txt)
-#(cat subshellio.txt)
-#(rm subshellio.txt)
+(echo Subshells work > subshellio.txt)
+(cat subshellio.txt)
+(rm subshellio.txt)
 
 EOF
 
