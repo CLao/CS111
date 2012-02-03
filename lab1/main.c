@@ -25,6 +25,7 @@ get_next_byte (void *stream)
 int
 main (int argc, char **argv)
 {
+
   int opt;
   int command_number = 1;
   int print_tree = 0;
@@ -55,7 +56,7 @@ main (int argc, char **argv)
   command_t last_command = NULL;
   command_t command;
   if (time_travel)
-	{ execute_parallel (command_stream); }
+	{execute_parallel (command_stream); }
   else
   while ((command = read_command_stream (command_stream)))
     {

@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include "alloc.h"
 
-typedef struct dep_node *dep_node_t;
+typedef struct dep_node* dep_node_t;
 typedef struct dep_graph *dep_graph_t;
 
 int
@@ -35,17 +35,16 @@ command_status (command_t c)
 struct dep_node
 {
 	command_t c;
-	struct dep_node_t* before;
+	dep_node_t* before;
 	size_t bef_size;
 	
-	struct dep_node_t* after;
+	dep_node_t* after;
 	size_t aft_size;
 };
 
 // Initialze a node with a command_t
 void init_node (dep_node_t n, command_t c)
 {
-	n = checked_malloc (sizeof (struct dep_node));
 	n->c = c;
 	n->before = checked_malloc (sizeof (dep_node_t));
 	n->bef_size = 0;
@@ -151,7 +150,7 @@ int move_d_to_e (dep_graph_t d, size_t dpos)
 		d->dep[it] = d->dep[it + 1];
 	}
 	
-	d->execSize--;
+	d->depSize--;
 	
 	return 0;
 }
@@ -159,7 +158,6 @@ int move_d_to_e (dep_graph_t d, size_t dpos)
 // Initialze dependency graph
 void init_dep_graph (dep_graph_t d)
 {
-	d = checked_malloc (sizeof (struct dep_graph));
 	d->exec = checked_malloc (sizeof (dep_node_t));
 	d->dep = checked_malloc (sizeof (dep_node_t));
 	d->execSize = 0;
@@ -171,20 +169,71 @@ void init_dep_graph (dep_graph_t d)
 /*make_dep_graph
  * Creates a dependency graph object from a command stream
  * */
+char* find_args(command_t c)
+{
+	char* args;
+	switch (c->type){
+		case AND_COMMAND:
+			
+    		case SEQUENCE_COMMAND:
+    		case OR_COMMAND:          
+		case PIPE_COMMAND:        
+		case SIMPLE_COMMAND:      
+		case SUBSHELL_COMMAND: break;
+	}
+	return args;
+}
+
 dep_graph_t make_dep_graph (command_stream_t s)
 {
+
 	dep_graph_t ret_d;
 	ret_d = NULL;
 	size_t it;
 	it = 0;
+	size_t iter = 0;
 	command_t comm;
-	
+	ret_d = checked_malloc (sizeof (struct dep_graph));
 	init_dep_graph (ret_d);
-	
-	// Iterate through the stream's array of commands
+
 	for (it = 0; it < s->cLen; it++)
-	{
+	{			
 		comm = s->cArray[it];
+		dep_node_t n;
+		n = checked_malloc (sizeof (struct dep_node));
+		init_node(n, comm);
+		while(iter < ret_d->execSize || iter < ret_d->depSize)
+		{	
+			printf("iter: %d\n", iter);
+			//error(1,0,"dick");
+			if(comm->input!= NULL)
+				printf("%s\n", comm->input);
+			if(comm->output != NULL && iter < ret_d->execSize){
+				if(ret_d->exec[iter]->c->input == comm->output)
+				{
+					n->before[n->bef_size] = ret_d->exec[iter];
+					n->bef_size +=1;
+				}
+			}
+			if(comm->input != NULL && iter < ret_d->depSize){
+				if(ret_d->dep[iter]->c->output == comm->input)
+				{
+					n->before[n->bef_size] = ret_d->dep[iter];
+					n->bef_size+=1;
+					//ret_d->dep[iter]->after[ret_d->dep[iter]->aft_size] = n;
+					//ret_d->dep[iter]->aft_size++;
+				}
+			}
+		iter +=1;
+		}
+
+		if(comm->output!=NULL){
+			dep_graph_add(ret_d, n, 1);}
+		if(comm->input != NULL && n->bef_size > 0){
+			dep_graph_add(ret_d, n, 1);}
+		else{
+			dep_graph_add(ret_d, n, 0);}
+		iter = 0;
 		
 		//TODO:
 		// Determine which nodes already seen depend on this one.
@@ -216,6 +265,43 @@ void execute_parallel (command_stream_t s);
 
 void execute_dep_graph (dep_graph_t d)
 {	
+	size_t iter = 0;
+	size_t innerIter = 0;
+	int status;
+	if (d->execSize>0)
+	{
+		int pid;
+		pid = fork();
+		if (pid == 0){
+				execute_command_r(d->exec[0]->c, 0);
+		}else if (pid<0)
+			error(1, 0, "Child process failed to fork");
+		else if (pid>0)
+		{	
+			while(iter < d->depSize)
+			{
+				for(innerIter; innerIter < d->dep[iter]->bef_size; innerIter++)
+				{
+					if(d->dep[iter]->before[innerIter] == d->exec[0])
+						d->dep[iter]->bef_size -= 1;
+				}
+				if (d->dep[iter]->bef_size == 0)
+				{
+					move_d_to_e(d, d->depSize);
+				}
+				iter++;
+			}
+			remove_e(d, 0);
+			if (d->execSize == 0)
+			{
+				while (waitpid(-1,&status,0)>0)
+					continue;
+				exit(0);
+			}
+			execute_dep_graph(d);
+		}
+	}
+	
 	//TODO:
 	// while d has independent nodes
 		// remove a node n from d
@@ -238,6 +324,7 @@ void execute_parallel (command_stream_t s)
 	d = NULL;
 	dep_node_t n;
 	n = NULL;
+	
 	
 	// Make the dependency graph
 	d = make_dep_graph (s);
