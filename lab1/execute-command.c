@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include "alloc.h"
-#include "strings.h"
+#include "string.h"
 
 typedef struct dep_node* dep_node_t;
 typedef struct dep_graph *dep_graph_t;
@@ -41,6 +41,10 @@ struct dep_node
 	
 	dep_node_t* after;
 	size_t aft_size;
+
+	char** in;
+	char** out;
+	char** args;
 };
 
 // Initialze a node with a command_t
@@ -51,6 +55,9 @@ void init_node (dep_node_t n, command_t c)
 	n->bef_size = 0;
 	n->after = checked_malloc (sizeof (dep_node_t));
 	n->aft_size = 0;
+	n->in = checked_malloc (sizeof (char *)*512);
+	n->out = checked_malloc (sizeof (char*)*512);
+	n->args = checked_malloc (sizeof (char*)*512);
 }
 
 void destroy_node (dep_node_t n)
@@ -146,6 +153,7 @@ int move_d_to_e (dep_graph_t d, size_t dpos)
 	d->execSize++;
 	
 	size_t it;
+	free(d->dep[dpos]);
 	for (it = dpos; it < (d->depSize - 1); it++)
 	{
 		d->dep[it] = d->dep[it + 1];
@@ -206,7 +214,7 @@ char** find_args(command_t c)
 	return args;
 }
 
-char** find_IO(command_t c)
+char** find_I(command_t c)
 {
 	char** args;
 	char** args2;
@@ -221,6 +229,44 @@ char** find_IO(command_t c)
 		case SIMPLE_COMMAND:
 			if (c->input != NULL)
 			{args[pos] = c->input;pos++;}
+			//if (c->output != NULL)
+			//{args[pos] = c->output;pos++;}
+			break;
+		case SUBSHELL_COMMAND: break;
+		default: 
+			args = find_args(c->u.command[0]);
+			args2 = find_args(c->u.command[1]);
+			innerPos = 0;
+			while(args[pos]!=NULL)
+			{
+				pos++;
+			}       
+			pos++;
+			while(args2[innerPos]!=NULL)
+			{
+				args[pos] = args2[innerPos];
+				pos++; innerPos++;
+			}       
+			break;   
+	}
+	return args;
+}
+
+char** find_O(command_t c)
+{
+	char** args;
+	char** args2;
+	args = checked_malloc((sizeof(char*))*512);
+	args2 = checked_malloc((sizeof(char*))*512);
+	int pos = 0;
+	int innerPos = 0;
+	switch (c->type){
+    		case SEQUENCE_COMMAND:
+			args = find_args(c->u.command[0]); 
+			break;
+		case SIMPLE_COMMAND:
+			//if (c->input != NULL)
+			//{args[pos] = c->input;pos++;}
 			if (c->output != NULL)
 			{args[pos] = c->output;pos++;}
 			break;
@@ -259,9 +305,13 @@ dep_graph_t make_dep_graph (command_stream_t s)
 
 	char** args;
 	args = checked_malloc((sizeof(char*))*512);
-	char** IO;
-	IO = checked_malloc((sizeof(char*))*512);
+	char** I;
+	I = checked_malloc((sizeof(char*))*512);
+	char** O;
+	O = checked_malloc((sizeof(char*))*512);
 
+	int position = 0;
+	int innerpos = 0;
 	for (it = 0; it < s->cLen; it++)
 	{			
 		comm = s->cArray[it];
@@ -271,19 +321,100 @@ dep_graph_t make_dep_graph (command_stream_t s)
 		while(iter < ret_d->execSize || iter < ret_d->depSize)
 		{	
 			args = find_args(comm);
-			IO = find_IO(comm);
-			printf("iter: %zu\n", iter);
+			I = find_I(comm);
+			O = find_O(comm);
+			n->in = I;
+			n->out = O;
+			n->args = args;
+			//printf("iter: %d\n", iter);
 			//error(1,0,"dick");
-			if(comm->input!= NULL)
-				printf("%s\n", comm->input);
-			if(comm->output != NULL && iter < ret_d->execSize){
-				if(ret_d->exec[iter]->c->input == comm->output)
-				{
-					n->before[n->bef_size] = ret_d->exec[iter];
-					n->bef_size +=1;
+			//if(comm->input!= NULL)
+			//	printf("%s\n", comm->input);
+
+			if(O != NULL && iter < ret_d->execSize){//printf("O\n");
+				while(O[position]!=NULL){
+					while(ret_d->exec[iter]->in[innerpos]!=NULL){
+						if(strcmp(ret_d->exec[iter]->in[innerpos], O[position])==0)
+						{
+							n->before[n->bef_size] = ret_d->exec[iter];
+							n->bef_size +=1;
+						}
+						innerpos+=1;
+					}
+					position +=1;
 				}
 			}
-			if(comm->input != NULL && iter < ret_d->depSize){
+			
+			if(O != NULL && iter < ret_d->depSize){//printf("O\n");
+				while(O[position]!=NULL){//printf("O2\n");
+					while(ret_d->dep[iter]->in[innerpos]!=NULL){
+						if(strcmp(ret_d->dep[iter]->in[innerpos], O[position])==0)
+						{
+							n->before[n->bef_size] = ret_d->dep[iter];
+							n->bef_size +=1;
+						}
+						innerpos+=1;
+					}
+					position +=1;
+				}
+			}
+
+			if(I != NULL && iter < ret_d->depSize){
+				while(I[position]!=NULL){
+					while(ret_d->dep[iter]->out[innerpos]!=NULL){
+						if(strcmp(ret_d->dep[iter]->out[innerpos], I[position])==0)
+						{
+							n->before[n->bef_size] = ret_d->dep[iter];
+							n->bef_size +=1;
+						}
+						innerpos+=1;
+					}
+					position +=1;
+				}
+			}
+			if(I != NULL && iter < ret_d->execSize){
+				while(I[position]!=NULL){
+					while(ret_d->exec[iter]->out[innerpos]!=NULL){
+						if(strcmp(ret_d->exec[iter]->out[innerpos], I[position])==0)
+						{
+							n->before[n->bef_size] = ret_d->exec[iter];
+							n->bef_size +=1;
+						}
+						innerpos+=1;
+					}
+					position +=1;
+				}
+			}
+
+			if(args != NULL && iter < ret_d->depSize){
+				while(args[position]!=NULL){
+					while(ret_d->dep[iter]->out[innerpos]!=NULL){
+						if(strcmp(ret_d->dep[iter]->out[innerpos], args[position])==0)
+						{
+							n->before[n->bef_size] = ret_d->dep[iter];
+							n->bef_size +=1;
+						}
+						innerpos+=1;
+					}
+					position +=1;
+				}
+			}
+			
+			if(args != NULL && iter < ret_d->execSize){
+				while(args[position]!=NULL){
+					while(ret_d->exec[iter]->out[innerpos]!=NULL){
+						if(strcmp(ret_d->exec[iter]->out[innerpos], args[position])==0)
+						{
+							n->before[n->bef_size] = ret_d->exec[iter];
+							n->bef_size +=1;
+						}
+						innerpos+=1;
+					}
+					position +=1;
+				}
+			}
+
+			/*if(comm->input != NULL && iter < ret_d->depSize){
 				if(ret_d->dep[iter]->c->output == comm->input)
 				{
 					n->before[n->bef_size] = ret_d->dep[iter];
@@ -291,15 +422,15 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					//ret_d->dep[iter]->after[ret_d->dep[iter]->aft_size] = n;
 					//ret_d->dep[iter]->aft_size++;
 				}
-			}
+			}*/
+		position = 0;
+		innerpos = 0;
 		iter +=1;
 		}
 
-		if(comm->output!=NULL){
+		if(n->bef_size > 0){printf("befsize = %d\n", n->bef_size);
 			dep_graph_add(ret_d, n, 1);}
-		if(comm->input != NULL && n->bef_size > 0){
-			dep_graph_add(ret_d, n, 1);}
-		else{
+		else{ printf("befsize = %d\n", n->bef_size);
 			dep_graph_add(ret_d, n, 0);}
 		iter = 0;
 		
@@ -336,6 +467,8 @@ void execute_dep_graph (dep_graph_t d)
 	size_t iter = 0;
 	size_t innerIter = 0;
 	int status;
+	int addstat;
+	int dpos;
 	if (d->execSize>0)
 	{
 		int pid;
@@ -348,17 +481,27 @@ void execute_dep_graph (dep_graph_t d)
 		{	
 			while(iter < d->depSize)
 			{
+				printf("hello\n");
 				for(innerIter; innerIter < d->dep[iter]->bef_size; innerIter++)
 				{
 					if(d->dep[iter]->before[innerIter] == d->exec[0])
+					{
+						for(dpos = innerIter; d->dep[dpos+1]!=NULL; dpos++)
+						{
+							d->dep[dpos] = d->dep[dpos+1];
+						}
 						d->dep[iter]->bef_size -= 1;
+					}
 				}
 				if (d->dep[iter]->bef_size == 0)
 				{
-					move_d_to_e(d, d->depSize);
+					printf("changing stuffs\n");
+					addstat = move_d_to_e(d, iter);
+					printf("addstat: %d\n", addstat);
 				}
 				iter++;
 			}
+			//printf("\n");
 			remove_e(d, 0);
 			if (d->execSize == 0)
 			{
