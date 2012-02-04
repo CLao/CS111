@@ -395,19 +395,21 @@ dep_graph_t make_dep_graph (command_stream_t s)
 	size_t innerpos = 0;
 	for (it = 0; it < s->cLen; it++)
 	{			
-		comm = s->cArray[it];
+		comm = s->cArray[it]; //each command in the array
 		dep_node_t n;
 		n = checked_malloc (sizeof (struct dep_node));
-		init_node(n, comm);
+		init_node(n, comm); //make a node to add to the graph
 		while(iter < ret_d->execSize || iter < ret_d->depSize)
 		{	
 			//if (debugmode) { printf ("I AM THERE!"); }
 			aSize = 0;
 			size_t aMem = sizeof (char*);
 			args = checked_malloc(aMem);
+			//find all the arguments passed on the command line and in through I/O redirect
 			find_args(comm, args, &aSize, &aMem);
 			find_I(comm, I, &ISize, &IMem);
 			find_O(comm, O, &OSize, &OMem);
+			//set all the node properties
 			n->in = I;
 			n->inSize = ISize;
 			n->inMem = IMem;
@@ -415,12 +417,14 @@ dep_graph_t make_dep_graph (command_stream_t s)
 			n->outSize = OSize;
 			n->outMem = OMem;
 			n->args = args;
-			printf("iter: %zu\n", iter);
+			//printf("iter: %zu\n", iter);
 			//error(1,0,"kid");
 			//if(comm->input!= NULL)
 			//	printf("%s\n", comm->input);
-			printf ("1");
+			//printf ("1");
 			
+			//if there is a value in the output array and there is a node in the executable array
+			//of the graph, then add a dependency to the current node and then push it to the dependancy graph
 			if(O != NULL && iter < ret_d->execSize){//printf("O\n");
 				while(position < OSize){
 					while(innerpos < ret_d->exec[iter - 1]->inSize){
@@ -438,6 +442,11 @@ dep_graph_t make_dep_graph (command_stream_t s)
 				}
 			}
 			printf ("2");
+			
+			//if there is a value in the output array and there is a node in the dependancy array
+			//of the graph, then add a dependency to the current node and then push it to the dependancy graph, because all commands
+			//are parsed sequentially, if a dependancy occurs in the dependancy graph, then it must be added to the
+			//dependancy graph
 			if(O != NULL && iter < ret_d->depSize){//printf("O\n");
 				while(O[position]!=NULL){//printf("O2\n");
 					while(ret_d->dep[iter]->in[innerpos]!=NULL){
@@ -452,6 +461,9 @@ dep_graph_t make_dep_graph (command_stream_t s)
 				}
 			}
 			printf ("3");
+			
+			//if there is a input depencdancy and there is a matching value in the dependancy graph
+			//push the dependancy for this node
 			if(I != NULL && iter < ret_d->depSize){
 				while(I[position]!=NULL){
 					while(ret_d->dep[iter]->out[innerpos]!=NULL){
@@ -466,6 +478,8 @@ dep_graph_t make_dep_graph (command_stream_t s)
 				}
 			}
 			printf ("4");
+			
+			//same thing as above, but check the executable array for a dependancy
 			if(I != NULL && iter < ret_d->execSize){
 				while(I[position]!=NULL){
 					while(ret_d->exec[iter]->out[innerpos]!=NULL){
@@ -480,6 +494,9 @@ dep_graph_t make_dep_graph (command_stream_t s)
 				}
 			}
 			printf ("5");
+			
+			//this should do the same for the arguments parsed as command line and not strict 
+			//I/O redirection. This function checks the dependancy array of the graph
 			if(args != NULL && iter < ret_d->depSize){
 				while(args[position]!=NULL){
 					while(ret_d->dep[iter]->out[innerpos]!=NULL){
@@ -494,6 +511,8 @@ dep_graph_t make_dep_graph (command_stream_t s)
 				}
 			}
 			printf ("6");
+			
+			//same as above, but it checks the executable array for the graph
 			if(args != NULL && iter < ret_d->execSize){
 				while(args[position]!=NULL){
 					while(ret_d->exec[iter]->out[innerpos]!=NULL){
@@ -517,15 +536,20 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					//ret_d->dep[iter]->aft_size++;
 				}
 			}*/
+			//reset all the values that you used before in the loop 
 			position = 0;
 			innerpos = 0;
 			iter +=1;
 		}
 		printf ("7");
+		//if at any point the bef_size of the current node has been altered so it is greater than 0, add this
+		//node to the dependancy array for the graph
 		if(n->bef_size > 0){//if (debugmode) printf("befsize = %zu\n", n->bef_size);
 			dep_graph_add(ret_d, n, 1);}
+		//if the node has no dependancies, then push it to the executable array of the dependancy graph
 		else{// if (debugmode) printf("befsize = %zu\n", n->bef_size);
 			dep_graph_add(ret_d, n, 0);}
+		//reset iter for the next command that needs to be added
 		iter = 0;
 		
 		//TODO:
