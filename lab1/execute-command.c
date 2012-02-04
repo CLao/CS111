@@ -68,8 +68,14 @@ struct dep_node
 	size_t aft_mem;
 
 	char** in;
+	size_t inSize;
+	size_t inMem;
 	char** out;
+	size_t outSize;
+	size_t outMem;
 	char** args;
+	size_t argSize;
+	size_t argMem;
 };
 
 // Initialze a node with a command_t
@@ -250,7 +256,9 @@ void find_args(command_t c, char** args, size_t* aSize, size_t* aMem)
 				args[*aSize] = *w; (*aSize)++;
 			}
 			break;
-		case SUBSHELL_COMMAND: break;
+		case SUBSHELL_COMMAND: 
+			find_args(c->u.subshell_command, args, aSize, aMem);
+			break;
 		default: 
 			find_args(c->u.command[0], args, aSize, aMem);
 			find_args(c->u.command[1], args, aSize, aMem);
@@ -294,7 +302,15 @@ void find_I(command_t c, char** Iargs, size_t *ISize, size_t* IMem)
 				Iargs[*ISize] = c->input; (*ISize)++;
 			}
 			break;
-		case SUBSHELL_COMMAND: break;
+		case SUBSHELL_COMMAND:
+			if (c->input != NULL)
+			{
+				if (mem_need_grow (Iargs, ISize, sizeof (char*), *IMem))
+					{ printf ("IS: %zu\n", *IMem);Iargs = checked_grow_alloc (Iargs, IMem); }
+				Iargs[*ISize] = c->input; (*ISize)++;
+			}
+			find_I (c->u.subshell_command, Iargs, ISize, IMem);
+			break;
 		default: 
 			find_I(c->u.command[0], Iargs, ISize, IMem);
 			find_I(c->u.command[1], Iargs, ISize, IMem);
@@ -322,11 +338,19 @@ void find_O(command_t c, char** Oargs, size_t* OSize, size_t* OMem)
 			if (c->output != NULL)
 			{
 				if (mem_need_grow (Oargs, OSize, sizeof (char*), *OMem))
-					{ printf ("O: %zu\n", *OMem);Oargs = checked_grow_alloc (Oargs, OMem); }
+					{ printf ("O: %zu\n", *OMem);Oargs = checked_grow_alloc (Oargs, OMem); printf ("O complete!\n");}
 				Oargs[*OSize] = c->output; (*OSize)++;
 			}
 			break;
-		case SUBSHELL_COMMAND: break;
+		case SUBSHELL_COMMAND:
+			if (c->output != NULL)
+			{
+				if (mem_need_grow (Oargs, OSize, sizeof (char*), *OMem))
+					{ printf ("O: %zu\n", *OMem);Oargs = checked_grow_alloc (Oargs, OMem); printf ("O complete!\n");}
+				Oargs[*OSize] = c->output; (*OSize)++;
+			}
+			find_O (c->u.subshell_command, Oargs, OSize, OMem);
+			break;
 		default: 
 			find_O(c->u.command[0], Oargs, OSize, OMem);
 			find_O(c->u.command[1], Oargs, OSize, OMem);
@@ -349,6 +373,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 	init_dep_graph (ret_d);
 
 	char** args;
+	size_t aSize;
 	size_t argMem;
 	argMem = (sizeof(char*));
 	args = checked_malloc(argMem);
@@ -361,13 +386,13 @@ dep_graph_t make_dep_graph (command_stream_t s)
 	
 	char** O;
 	size_t OMem;
-	OMem = (sizeof(char*));
+	OMem = (sizeof(char*) * 3);
 	size_t OSize;
 	OSize = 0;
 	O = checked_malloc(OMem);
 
-	int position = 0;
-	int innerpos = 0;
+	size_t position = 0;
+	size_t innerpos = 0;
 	for (it = 0; it < s->cLen; it++)
 	{			
 		comm = s->cArray[it];
@@ -377,25 +402,33 @@ dep_graph_t make_dep_graph (command_stream_t s)
 		while(iter < ret_d->execSize || iter < ret_d->depSize)
 		{	
 			//if (debugmode) { printf ("I AM THERE!"); }
-			size_t aSize = 0;
+			aSize = 0;
 			size_t aMem = sizeof (char*);
 			args = checked_malloc(aMem);
 			find_args(comm, args, &aSize, &aMem);
 			find_I(comm, I, &ISize, &IMem);
 			find_O(comm, O, &OSize, &OMem);
 			n->in = I;
+			n->inSize = ISize;
+			n->inMem = IMem;
 			n->out = O;
+			n->outSize = OSize;
+			n->outMem = OMem;
 			n->args = args;
-			//printf("iter: %d\n", iter);
+			printf("iter: %zu\n", iter);
 			//error(1,0,"kid");
 			//if(comm->input!= NULL)
 			//	printf("%s\n", comm->input);
-
+			printf ("1");
+			
 			if(O != NULL && iter < ret_d->execSize){//printf("O\n");
-				while(O[position]!=NULL){
-					while(ret_d->exec[iter]->in[innerpos]!=NULL){
-						if(strcmp(ret_d->exec[iter]->in[innerpos], O[position])==0)
+				while(position < OSize){
+					while(innerpos < ret_d->exec[iter - 1]->inSize){
+						if(strcmp(ret_d->exec[iter - 1]->in[innerpos], O[position])==0)
 						{
+							if (mem_need_grow (n->before, &n->bef_size, sizeof(dep_node_t) , n->bef_mem))
+								{ n->before = checked_grow_alloc (n->before, &(n->bef_mem)); }
+							
 							n->before[n->bef_size] = ret_d->exec[iter];
 							n->bef_size +=1;
 						}
@@ -404,7 +437,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					position +=1;
 				}
 			}
-			
+			printf ("2");
 			if(O != NULL && iter < ret_d->depSize){//printf("O\n");
 				while(O[position]!=NULL){//printf("O2\n");
 					while(ret_d->dep[iter]->in[innerpos]!=NULL){
@@ -418,7 +451,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					position +=1;
 				}
 			}
-
+			printf ("3");
 			if(I != NULL && iter < ret_d->depSize){
 				while(I[position]!=NULL){
 					while(ret_d->dep[iter]->out[innerpos]!=NULL){
@@ -432,6 +465,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					position +=1;
 				}
 			}
+			printf ("4");
 			if(I != NULL && iter < ret_d->execSize){
 				while(I[position]!=NULL){
 					while(ret_d->exec[iter]->out[innerpos]!=NULL){
@@ -445,7 +479,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					position +=1;
 				}
 			}
-
+			printf ("5");
 			if(args != NULL && iter < ret_d->depSize){
 				while(args[position]!=NULL){
 					while(ret_d->dep[iter]->out[innerpos]!=NULL){
@@ -459,7 +493,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					position +=1;
 				}
 			}
-			
+			printf ("6");
 			if(args != NULL && iter < ret_d->execSize){
 				while(args[position]!=NULL){
 					while(ret_d->exec[iter]->out[innerpos]!=NULL){
@@ -473,7 +507,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					position +=1;
 				}
 			}
-
+			printf ("6.5");
 			/*if(comm->input != NULL && iter < ret_d->depSize){
 				if(ret_d->dep[iter]->c->output == comm->input)
 				{
@@ -483,11 +517,11 @@ dep_graph_t make_dep_graph (command_stream_t s)
 					//ret_d->dep[iter]->aft_size++;
 				}
 			}*/
-		position = 0;
-		innerpos = 0;
-		iter +=1;
+			position = 0;
+			innerpos = 0;
+			iter +=1;
 		}
-
+		printf ("7");
 		if(n->bef_size > 0){//if (debugmode) printf("befsize = %zu\n", n->bef_size);
 			dep_graph_add(ret_d, n, 1);}
 		else{// if (debugmode) printf("befsize = %zu\n", n->bef_size);
@@ -501,7 +535,7 @@ dep_graph_t make_dep_graph (command_stream_t s)
 			// And move it to the node with dependencies list
 		// Look through the nodes with dependencies.
 			// If a match is found, add this node as a dependency
-
+printf ("9");
 		
 	}
 	
@@ -543,6 +577,7 @@ void execute_parallel (command_stream_t s);
 
 void execute_dep_graph (dep_graph_t d)
 {	
+	printf ("12434324324325436");
 	size_t iter = 0;
 	size_t innerIter = 0;
 	int status;
